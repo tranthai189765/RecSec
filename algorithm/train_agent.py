@@ -175,7 +175,7 @@ if __name__ == "__main__":
     EPSILON_DECAY = 10_000 
     
     # Config Buffer
-    EXPERT_BUFFER_SIZE = 50_000
+    EXPERT_BUFFER_SIZE = 100_000
     ONLINE_BUFFER_SIZE = 100_000
     PREFILL_STEPS = 100_000      
     PRETRAIN_UPDATES = 200_000    
