@@ -167,7 +167,7 @@ Thuật toán sử dụng **Double DQN kết hợp Dueling Architecture**, đư�
 
 | Buffer | Size | Content |
 |------|------|--------|
-| Expert Buffer | `50,000` | Oracle-guided transitions |
+| Expert Buffer | `100,000` | Oracle-guided transitions |
 | Online Buffer | `100,000` | Agent self-exploration |
 
 ---
