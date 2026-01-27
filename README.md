@@ -10,6 +10,11 @@ pip install torch numpy pandas networkx transformers gymnasium tensorboard
 ```bash
 python -m algorithm.train_agent
 ```
+## Lệnh chạy tensorboard để xem kết quả training trong lúc train
+
+```bash
+tensorboard --logdir runs
+```
 
 ## 🧠 Reinforcement Learning Environment: `TaxonomyRLEnv` (Qwen2-7B)
 
