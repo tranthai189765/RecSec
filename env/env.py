@@ -43,7 +43,7 @@ class TaxonomyRLEnv(gym.Env):
 
         self.max_children = 32 
         self.action_space = spaces.Discrete(self.max_children)
-        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(4096,), dtype=np.float32)
+        self.observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(3584,), dtype=np.float32)
         
         self.current_session = None
         self.target_label = None
@@ -67,11 +67,27 @@ class TaxonomyRLEnv(gym.Env):
             return f'Category: "{node_id}"'
 
     def _get_observation(self):
+        children = self.tree.get_children(self.current_node)
+        num_actions = len(children)
+
+        # ======================================================
+        # 2. SYSTEM PROMPT (KHÓA OUTPUT = 1 SỐ)
+        # ======================================================
         system_prompt = (
-            "SYSTEM INSTRUCTION: You are a movie taxonomy navigation agent. "
-            "Your task is to identify the correct category for a target user session "
-            "by traversing the taxonomy tree based on their watch history."
+            "SYSTEM INSTRUCTION:\n"
+            "You are a movie taxonomy navigation agent.\n\n"
+            "Your task is to choose the NEXT ACTION INDEX to navigate the taxonomy tree.\n\n"
+            "RULES:\n"
+            f"- You MUST output ONLY ONE INTEGER.\n"
+            f"- The integer MUST be between 0 and {num_actions - 1}.\n"
+            "- The integer MUST correspond to one of the available actions listed below.\n"
+            "- Do NOT output words, explanations, punctuation, or multiple numbers.\n"
+            "- Do NOT repeat the prompt.\n"
+            "- Any output that is not a single valid integer is considered INVALID.\n\n"
+            "OUTPUT FORMAT:\n"
+            "<one integer only>"
         )
+
 
         current_depth = len(self.path_history)
         history_parts = []
@@ -117,11 +133,22 @@ class TaxonomyRLEnv(gym.Env):
         
         full_text = (
             f"{system_prompt}\n\n"
-            f"=== USER WATCH HISTORY (Depth-based Detail: Level {current_depth}) ===\n"
+
+            f"=== USER WATCH HISTORY (Movies from PREVIOUS TAXONOMY LEVELS) ===\n"
+            f"The following movies represent the user's past navigation and preferences\n"
+            f"in the taxonomy tree, up to LEVEL {current_depth}.\n"
+            f"These are CONTEXT ONLY. You do NOT choose from them.\n\n"
             f"{history_text}\n\n"
-            f"=== CURRENT TRAJECTORY ===\n"
+
+            f"=== CURRENT POSITION IN TAXONOMY TREE ===\n"
+            f"You are currently at a node on LEVEL {current_depth}.\n"
+            f"Taxonomy path from root to current node:\n"
             f"{path_text}\n\n"
-            f"=== AVAILABLE NEXT NODES (Choose Action Index) ===\n"
+
+            f"=== CANDIDATE NODES FOR NEXT LEVEL (LEVEL {current_depth + 1}) ===\n"
+            f"The following nodes are the DIRECT CHILDREN of the current node.\n"
+            f"Each child corresponds to ONE possible NEXT ACTION.\n"
+            f"You MUST choose exactly ONE action index.\n\n"
             f"{children_text}"
         )
         
@@ -202,7 +229,7 @@ class TaxonomyRLEnv(gym.Env):
 # ==========================================
 if __name__ == "__main__":
     TAXONOMY_FILE = "taxonomy/taxonomy_with_ids.json"
-    SESSIONS_FILE = "data/movie_sessions_ids.jsonl"
+    SESSIONS_FILE = "data/movie_sessions_ids_train.jsonl"
 
     print("--- 1. Init Graph ---")
     try:
@@ -258,3 +285,38 @@ if __name__ == "__main__":
         
         if terminated:
             print("\n🏁 EPISODE FINISHED 🏁")
+
+    print("\n==============================")
+    print("🧪 TEST: WRONG ACTION AT DEPTH 1")
+    print("==============================")
+
+    obs, _ = env.reset()
+
+    target_id = env.target_label
+    target_path = nx.shortest_path(graph.graph, graph.root, target_id)
+
+    print(f"🎯 Target Full Path: {target_path}")
+    print(f"🌱 Root children: {graph.get_children(env.current_node)}")
+
+    children = graph.get_children(env.current_node)
+
+    # Chọn 1 node KHÔNG nằm trên path target
+    wrong_action = -1
+    for i, child in enumerate(children):
+        if not graph.is_ancestor_of(child, target_id):
+            wrong_action = i
+            break
+
+    if wrong_action == -1:
+        print("⚠️ Không có node sai ở depth 1 (taxonomy quá hẹp)")
+    else:
+        print(f"🤖 Force WRONG action {wrong_action} (Node: {children[wrong_action]})")
+
+        obs, reward, terminated, truncated, info = env.step(wrong_action)
+
+        print("\n--- RESULT ---")
+        print(f"Result info   : {info}")
+        print(f"Reward        : {reward}")
+        print(f"Terminated    : {terminated}")
+        print(f"Current node  : {env.current_node}")
+        print(f"Path history  : {env.path_history}")
