@@ -37,7 +37,7 @@ class EmbeddingExtractor:
             text, 
             return_tensors="pt", 
             truncation=True, 
-            max_length=512,
+            max_length=self.tokenizer.model_max_length,
             padding=True # Nên thêm padding=True để an toàn
         ).to(self.device if self.device == "cuda" else "cpu") # model load auto device map handles placement, inputs need to match
         
@@ -69,7 +69,7 @@ class EmbeddingExtractor:
 if __name__ == "__main__":
     # 1. Cấu hình
     # Bạn có thể đổi thành "TinyLlama/TinyLlama-1.1B-Chat-v1.0" để test nhanh logic
-    MODEL_NAME = "TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+    MODEL_NAME = "Qwen/Qwen2-7B"
     
     # Kiểm tra xem có GPU không
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
